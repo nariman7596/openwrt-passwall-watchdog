@@ -1,34 +1,69 @@
-
 # Passwall Watchdog for OpenWrt
 
-A robust, modular monitoring service engineered to ensure high-availability and stability for Passwall cores on OpenWrt routers. This tool implements a sophisticated "Check-before-Restart" logic, effectively preventing the service disruptions and flapping issues common in traditional, blind watchdog implementations.
+A lightweight monitoring daemon for Passwall cores on OpenWrt routers.  
+Unlike traditional watchdog scripts, this tool **validates before it acts** — no blind restarts, no unnecessary flapping.
+
+-----
 
 ## Quick Install
-Deploy the service instantly via your router's SSH terminal:
+
+Run this in your router’s SSH terminal:
 
 ```bash
-sh -c "$(curl -fsSL [https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/install.sh](https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/install.sh))"
-
-```
-## Engineering Logic
-The watchdog operates on a three-tier validation sequence, ensuring that the system only attempts recovery when a failure is confirmed:
- 1. **WAN Check:** Verifies raw upstream internet connectivity.
- 2. **Core Validation:** Performs process-level integrity checks for the Passwall service.
- 3. **Proxy Integrity:** Utilizes high-precision HTTP-based traffic routing verification (YouTube-bound) to ensure the tunnel is not just active, but functional.
-## Visual Status Protocol
-The router's status LED provides immediate, real-time telemetry regarding the system's operational health:
-| State | Indicator | Condition |
-|---|---|---|
-| **Critical** | PINK | WAN connection lost; primary upstream down. |
-| **Service Down** | RED | Passwall core process unresponsive. |
-| **Tunnel Failed** | BLUE | Core active, but proxy traffic routing failing. |
-| **Stable** | GREEN | System nominal, tunnel verified and operational. |
-## Technical Customization
-Designed with a "Safety-First" philosophy, the system preserves existing configurations by default. Environment-specific variables are exposed in the header of /usr/bin/passwall_watchdog.sh, allowing users to fine-tune the following parameters to match specific hardware footprints or unique routing requirements:
- * **LED_TRIGGER**: Adjust the hardware-specific path for status LED control.
- * **TEST_URL**: Update the target endpoint for proxy health verification.
- * **WAN_TOLERANCE / CORE_TOLERANCE**: Configure validation thresholds to mitigate false positives in high-latency or load-balanced environments.
-*Developed for OpenWrt enthusiasts requiring enterprise-grade stability on consumer-grade hardware.*
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/install.sh)"
 ```
 
-```
+-----
+
+## How It Works
+
+The watchdog runs a three-tier check sequence before taking any action:
+
+1. **WAN Check** — Verifies raw upstream internet connectivity.
+1. **Core Validation** — Confirms the Passwall process is alive and responsive.
+1. **Proxy Integrity** — Sends a real HTTP request through the tunnel to verify it’s actually routing traffic (not just “up”).
+
+A restart is only triggered when a failure is confirmed at the appropriate tier.  
+This eliminates false positives caused by transient latency or brief upstream hiccups.
+
+-----
+
+## LED Status
+
+Real-time system state is reported via the router’s status LED:
+
+|Color  |Meaning                                       |
+|-------|----------------------------------------------|
+|🟢 GREEN|All clear — WAN up, tunnel verified           |
+|🟡 PINK |WAN down — upstream connectivity lost         |
+|🔴 RED  |Core down — Passwall process unresponsive     |
+|🔵 BLUE |Core up, tunnel broken — proxy traffic failing|
+
+-----
+
+## Configuration
+
+All tunable parameters are defined at the top of `/usr/bin/passwall_watchdog.sh`:
+
+|Variable        |Description                                       |
+|----------------|--------------------------------------------------|
+|`LED_TRIGGER`   |Hardware path for the status LED (device-specific)|
+|`TEST_URL`      |Target URL used for proxy health checks           |
+|`WAN_TOLERANCE` |Retry threshold before declaring WAN failure      |
+|`CORE_TOLERANCE`|Retry threshold before restarting the core        |
+
+
+> The installer automatically backs up your current router configuration before making any changes.
+
+-----
+
+## Compatibility
+
+Primarily developed and tested on the **RAX3000M**.  
+The modular design makes it adaptable to other OpenWrt-supported hardware with minimal changes to `LED_TRIGGER`.
+
+-----
+
+## License
+
+MIT
