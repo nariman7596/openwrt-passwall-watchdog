@@ -1,71 +1,78 @@
 #!/bin/sh
 
-# ==============================================================================
-# Passwall Watchdog - Intelligent Interactive Installer
-# ==============================================================================
-
+# --- Paths ---
+INSTALL_DIR="/usr/bin"
 CONFIG_DIR="/etc/passwall_watchdog"
 CONFIG_FILE="$CONFIG_DIR/watchdog.conf"
-PID_FILE="/tmp/passwall_watchdog.pid"
 HOTPLUG_DIR="/etc/hotplug.d/button"
 HOTPLUG_FILE="$HOTPLUG_DIR/99-passwall-watchdog"
+INIT_FILE="/etc/init.d/passwall_watchdog"
 BACKUP_DIR="$CONFIG_DIR/backup"
+SCRIPT_NAME="passwall_watchdog.sh"
 
-echo "--- Passwall Watchdog: Initializing Smart Installation ---"
+# --- Helpers ---
+info()    { echo "  $1"; }
+success() { echo "  [OK] $1"; }
+warn()    { echo "  [!!] $1"; }
+ask()     { printf "  >>> %s: " "$1"; read -r REPLY; echo "$REPLY"; }
 
-# 1. Automatic Hardware Detection
-LED_RED=$(find /sys/class/leds/ -name "*red*" | head -n 1)
-LED_GREEN=$(find /sys/class/leds/ -name "*green*" | head -n 1)
-LED_BLUE=$(find /sys/class/leds/ -name "*blue*" | head -n 1)
+# --- Step 1: Backup ---
+backup_config() {
+    mkdir -p "$BACKUP_DIR"
+    if [ -f /etc/config/passwall2 ]; then
+        local name="backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+        tar -czf "$BACKUP_DIR/$name" /etc/config/passwall2 2>/dev/null
+        success "Config backed up: $BACKUP_DIR/$name"
+    else
+        warn "passwall2 config not found, skipping backup"
+    fi
+}
 
-# 2. Backup Phase
-mkdir -p "$BACKUP_DIR"
-BACKUP_NAME="backup_$(date +%Y%m%d_%H%M%S).tar.gz"
-tar -czf "$BACKUP_DIR/$BACKUP_NAME" /etc/config/passwall2 > /dev/null 2>&1
-echo -e "Backup created at: \033[1m$BACKUP_DIR/$BACKUP_NAME\033[0m"
+# --- Step 2: LED detection ---
+detect_leds() {
+    LED_RED=$(find /sys/class/leds/ -maxdepth 1 -name "*red*" | head -n 1)
+    LED_GREEN=$(find /sys/class/leds/ -maxdepth 1 -name "*green*" | head -n 1)
+    LED_BLUE=$(find /sys/class/leds/ -maxdepth 1 -name "*blue*" | head -n 1)
 
-# 3. Smart Button Mapping
-echo "Press the desired button for toggling Passwall now..."
-BUTTON_NAME=$(logread -f | grep -m 1 "button" | awk -F'button ' '{print $2}' | awk '{print $1}')
-echo "Button '$BUTTON_NAME' mapped."
+    if [ -z "$LED_RED" ] || [ -z "$LED_GREEN" ] || [ -z "$LED_BLUE" ]; then
+        warn "Could not auto-detect all LEDs."
+        info "Available LEDs:"
+        ls /sys/class/leds/
+        LED_RED=$(ask "Enter full path for RED LED")
+        LED_GREEN=$(ask "Enter full path for GREEN LED")
+        LED_BLUE=$(ask "Enter full path for BLUE LED")
+    else
+        success "LEDs detected:"
+        info "  RED:   $LED_RED"
+        info "  GREEN: $LED_GREEN"
+        info "  BLUE:  $LED_BLUE"
+    fi
+}
 
-cat << EOF > "$HOTPLUG_FILE"
+# --- Step 3: Button mapping ---
+map_button() {
+    info "Available buttons on this device:"
+    ls /sys/class/input/ 2>/dev/null
+
+    info ""
+    info "Default toggle button is WPS."
+    info "Press Enter to use WPS, or type another button name:"
+    BUTTON_NAME=$(ask "Button name [WPS]")
+    [ -z "$BUTTON_NAME" ] && BUTTON_NAME="WPS"
+    success "Toggle button set to: $BUTTON_NAME"
+}
+
+# --- Step 4: Write hotplug trigger ---
+write_hotplug() {
+    mkdir -p "$HOTPLUG_DIR"
+    cat > "$HOTPLUG_FILE" << EOF
 #!/bin/sh
-if [ "\$BUTTON" = "$BUTTON_NAME" ] && [ "\$ACTION" = "pressed" ]; then
-    /etc/passwall_watchdog.sh toggle
+if [ "\$BUTTON" = "$BUTTON_NAME" ] && [ "\$ACTION" = "released" ]; then
+    $INSTALL_DIR/$SCRIPT_NAME toggle
 fi
 EOF
-chmod +x "$HOTPLUG_FILE"
+    chmod +x "$HOTPLUG_FILE"
+    success "Hotplug trigger written: $HOTPLUG_FILE"
+}
 
-# 4. Status Protocol Configuration
-echo "--- Configuring Status Protocol ---"
-STATES=("Internet OK + Passwall Active + Free Net" "Internet OK + Passwall Active + No Free Net" "Internet OK + Passwall Inactive" "No Internet Connection")
-AVAILABLE="Green, Blue, Red, Pink"
-
-declare -A PROTOCOL_MAP
-for state in "${STATES[@]}"; do
-    echo "State: $state"
-    echo "Remaining Colors: $AVAILABLE"
-    read -p "Select color: " choice
-    PROTOCOL_MAP["$state"]=$choice
-    AVAILABLE=${AVAILABLE//$choice/}
-done
-
-# 5. Save Configuration
-mkdir -p "$CONFIG_DIR"
-cat << EOF > "$CONFIG_FILE"
-PING_TARGET="8.8.8.8"
-TEST_URL="https://www.youtube.com"
-BUTTON_WPS="$BUTTON_NAME"
-LED_RED="$LED_RED"
-LED_GREEN="$LED_GREEN"
-LED_BLUE="$LED_BLUE"
-PID_FILE="$PID_FILE"
-# Protocol Mapping:
-EOF
-
-for state in "${!PROTOCOL_MAP[@]}"; do
-    echo "$state=\"${PROTOCOL_MAP[$state]}\"" >> "$CONFIG_FILE"
-done
-
-echo "Installation complete. Config saved to $CONFIG_FILE."
+# --- Step 5: Write config
