@@ -1,6 +1,3 @@
-مرحله ۴ — README.md
-
-این رو کپی کن و جایگزین محتوای فعلی کن:
 
 # Passwall Watchdog for OpenWrt
 
