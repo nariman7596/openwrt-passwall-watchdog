@@ -26,11 +26,11 @@ check_core() {
 }
 
 check_proxy_connectivity() {
-    # Using YouTube to ensure traffic is forced through the tunnel
-    # --max-time 5 ensures we don't hang if the tunnel is slow
-    curl -I -s --max-time 5 https://www.youtube.com > /dev/null 2>&1
+    curl -I -s --socks5-hostname 127.0.0.1:$SOCKS_PORT \
+         --max-time 5 https://www.youtube.com > /dev/null 2>&1
     return $?
 }
+
 
 # --- Main Logic Loop ---
 log "Watchdog service initialization complete."
