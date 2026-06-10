@@ -3,18 +3,7 @@
 A lightweight monitoring daemon for Passwall cores on OpenWrt routers.  
 Unlike traditional watchdog scripts, this tool **validates before it acts** — no blind restarts, no unnecessary flapping.
 
------
-
-## Quick Install
-
-Run this in your router’s SSH terminal:
-
-```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/install.sh)"
-```
-
------
-
+----
 ## How It Works
 
 The watchdog runs a three-tier check sequence before taking any action:
