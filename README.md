@@ -1,6 +1,10 @@
+مرحله ۴ — README.md
+
+این رو کپی کن و جایگزین محتوای فعلی کن:
+
 # Passwall Watchdog for OpenWrt
 
-A lightweight monitoring daemon for Passwall2 cores on OpenWrt routers.
+A lightweight monitoring daemon for Passwall2 on OpenWrt routers.
 Validates before acting — no blind restarts, no unnecessary flapping.
 
 ---
@@ -36,7 +40,7 @@ LED Status
 |🟢 Green|WAN up, core running, tunnel verified   |
 |🔵 Blue |Core up, but proxy tunnel is failing    |
 |🔴 Red  |Core down, or Passwall manually disabled|
-|🟣 Pink |WAN down — no upstream connectivity     |
+|🩷 Pink |WAN down — no upstream connectivity     |
 
 Hardware Toggle
 
