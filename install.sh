@@ -75,4 +75,76 @@ EOF
     success "Hotplug trigger written: $HOTPLUG_FILE"
 }
 
-# --- Step 5: Write config
+# --- Step 5: Write config ---
+write_config() {
+    mkdir -p "$CONFIG_DIR"
+    cat > "$CONFIG_FILE" << EOF
+# Network
+PING_TARGET="8.8.8.8"
+WAN_TOLERANCE=2
+BOOT_DELAY=20
+
+# Proxy
+TEST_URL="https://www.youtube.com"
+SOCKS_PORT=1070
+PROXY_TOLERANCE=3
+
+# Hardware - LED paths (auto-detected)
+LED_RED="$LED_RED"
+LED_GREEN="$LED_GREEN"
+LED_BLUE="$LED_BLUE"
+
+# Toggle button
+TOGGLE_BUTTON="$BUTTON_NAME"
+
+# System
+LOG_FILE="/var/log/passwall_watchdog.log"
+PID_FILE="/tmp/passwall_watchdog.pid"
+EOF
+    success "Config written: $CONFIG_FILE"
+}
+
+# --- Step 6: Install main script ---
+install_script() {
+    if [ ! -f "./$SCRIPT_NAME" ]; then
+        warn "$SCRIPT_NAME not found in current directory"
+        return 1
+    fi
+    cp "./$SCRIPT_NAME" "$INSTALL_DIR/$SCRIPT_NAME"
+    chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
+    success "Main script installed: $INSTALL_DIR/$SCRIPT_NAME"
+}
+
+# --- Step 7: Install init service ---
+install_init() {
+    if [ ! -f "./watchdog_init" ]; then
+        warn "watchdog_init not found, skipping service install"
+        return 1
+    fi
+    cp ./watchdog_init "$INIT_FILE"
+    chmod +x "$INIT_FILE"
+    "$INIT_FILE" enable
+    success "Init service installed and enabled"
+}
+
+# --- Main ---
+echo ""
+echo "========================================"
+echo "   Passwall Watchdog Installer"
+echo "========================================"
+echo ""
+
+backup_config
+detect_leds
+map_button
+write_hotplug
+write_config
+install_script
+install_init
+
+echo ""
+echo "========================================"
+success "Installation complete."
+info "Start now with: $INSTALL_DIR/$SCRIPT_NAME boot"
+echo "========================================"
+echo ""
