@@ -8,7 +8,7 @@ HOTPLUG_DIR="/etc/hotplug.d/button"
 HOTPLUG_FILE="$HOTPLUG_DIR/99-passwall-watchdog"
 INIT_FILE="/etc/init.d/passwall_watchdog"
 BACKUP_DIR="$CONFIG_DIR/backup"
-SCRIPT_NAME="passwall_watchdog.sh"
+SCRIPT_NAME="Passwall_watchdog.sh"
 
 # --- Helpers ---
 info()    { echo "  $1"; }
