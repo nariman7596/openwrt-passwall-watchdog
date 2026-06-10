@@ -1,17 +1,34 @@
-# Passwall Watchdog
 
-A robust monitoring service designed to ensure the stability of Passwall cores on OpenWrt routers. This tool utilizes a **Check-before-Restart** logic, preventing unnecessary service disruptions caused by "blind" watchdog scripts.
+# Passwall Watchdog for OpenWrt
 
-### Overview
-This project is currently optimized for the **RAX3000M** router, providing deep hardware-level integration. It features a modular architecture that can be easily adapted to other router models.
+A robust, modular monitoring service engineered to ensure high-availability and stability for Passwall cores on OpenWrt routers. This tool implements a sophisticated "Check-before-Restart" logic, effectively preventing the service disruptions and flapping issues common in traditional, blind watchdog implementations.
 
-### Key Features
-* **RAX3000M Optimized:** Specifically tuned for the hardware characteristics and LED paths of the RAX3000M.
-* **Fully Customizable:** Easily configure hardware paths (LEDs/WPS Button), network test targets (Ping/HTTP), and the **Status Protocol** (define what each LED color represents) via a simple, well-documented `watchdog.conf` file.
-* **Intelligent Monitoring:** Connectivity testing using ping and real-world HTTP health checks.
-* **Safety First:** Includes an automated backup system to preserve your current router configuration before applying any changes.
-* **Modular Design:** Built with future-proofing in mind; the configuration logic allows for easy adaptation to other router models.
+## Quick Install
+Deploy the service instantly via your router's SSH terminal:
 
-### How it Works
-The watchdog monitors your internet connection and proxy core status in real-time. It uses a custom status protocol to communicate system health through your router's existing LED indicators:
-- **Status Protocol:** You can define exactly what each LED combination represents, ensuring the visual feedback matches your specific setup.
+```bash
+sh -c "$(curl -fsSL [https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/install.sh](https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/install.sh))"
+
+```
+## Engineering Logic
+The watchdog operates on a three-tier validation sequence, ensuring that the system only attempts recovery when a failure is confirmed:
+ 1. **WAN Check:** Verifies raw upstream internet connectivity.
+ 2. **Core Validation:** Performs process-level integrity checks for the Passwall service.
+ 3. **Proxy Integrity:** Utilizes high-precision HTTP-based traffic routing verification (YouTube-bound) to ensure the tunnel is not just active, but functional.
+## Visual Status Protocol
+The router's status LED provides immediate, real-time telemetry regarding the system's operational health:
+| State | Indicator | Condition |
+|---|---|---|
+| **Critical** | PINK | WAN connection lost; primary upstream down. |
+| **Service Down** | RED | Passwall core process unresponsive. |
+| **Tunnel Failed** | BLUE | Core active, but proxy traffic routing failing. |
+| **Stable** | GREEN | System nominal, tunnel verified and operational. |
+## Technical Customization
+Designed with a "Safety-First" philosophy, the system preserves existing configurations by default. Environment-specific variables are exposed in the header of /usr/bin/passwall_watchdog.sh, allowing users to fine-tune the following parameters to match specific hardware footprints or unique routing requirements:
+ * **LED_TRIGGER**: Adjust the hardware-specific path for status LED control.
+ * **TEST_URL**: Update the target endpoint for proxy health verification.
+ * **WAN_TOLERANCE / CORE_TOLERANCE**: Configure validation thresholds to mitigate false positives in high-latency or load-balanced environments.
+*Developed for OpenWrt enthusiasts requiring enterprise-grade stability on consumer-grade hardware.*
+```
+
+```
