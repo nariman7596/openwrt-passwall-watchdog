@@ -1,70 +1,75 @@
 # Passwall Watchdog for OpenWrt
 
-A lightweight monitoring daemon for Passwall cores on OpenWrt routers.  
-Unlike traditional watchdog scripts, this tool **validates before it acts** — no blind restarts, no unnecessary flapping.
+A lightweight monitoring daemon for Passwall2 cores on OpenWrt routers.
+Validates before acting — no blind restarts, no unnecessary flapping.
 
+---
 
-Unlike traditional watchdog scripts, this tool **validates before it acts** — no blind restarts, no unnecessary flapping.
-
------
 ## Quick Install
 
-Run this in your router’s SSH terminal:
+Run this in your router's SSH terminal:
 
-```bash
+```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/install.sh)"
-```
------
-----
-## How It Works
-
-The watchdog runs a three-tier check sequence before taking any action:
-
-1. **WAN Check** — Verifies raw upstream internet connectivity.
-1. **Core Validation** — Confirms the Passwall process is alive and responsive.
-1. **Proxy Integrity** — Sends a real HTTP request through the tunnel to verify it’s actually routing traffic (not just “up”).
-
-A restart is only triggered when a failure is confirmed at the appropriate tier.  
-This eliminates false positives caused by transient latency or brief upstream hiccups.
-
------
-
-## LED Status
-
-Real-time system state is reported via the router’s status LED:
-
-|Color  |Meaning                                       |
-|-------|----------------------------------------------|
-|🟢 GREEN|All clear — WAN up, tunnel verified           |
-|🟣 PINK |WAN down — upstream connectivity lost         |
-|🔴 RED  |Core down — Passwall process unresponsive     |
-|🔵 BLUE |Core up, tunnel broken — proxy traffic failing|
-
------
-
-## Configuration
-
-All tunable parameters are defined at the top of `/usr/bin/passwall_watchdog.sh`:
-
-|Variable        |Description                                       |
-|----------------|--------------------------------------------------|
-|`LED_TRIGGER`   |Hardware path for the status LED (device-specific)|
-|`TEST_URL`      |Target URL used for proxy health checks           |
-|`WAN_TOLERANCE` |Retry threshold before declaring WAN failure      |
-|`CORE_TOLERANCE`|Retry threshold before restarting the core        |
 
 
-> The installer automatically backs up your current router configuration before making any changes.
+During installation you’ll be asked to confirm the toggle button (default: WPS).
+The installer auto-detects your LED paths and writes everything to /etc/passwall_watchdog/watchdog.conf.
 
------
+How It Works
 
-## Compatibility
+The watchdog runs a three-tier check before taking any action:
 
-Primarily developed and tested on the **RAX3000M**.  
-The modular design makes it adaptable to other OpenWrt-supported hardware with minimal changes to `LED_TRIGGER`.
+	1.	WAN — Pings an upstream target to verify raw internet connectivity.
+	2.	Core — Checks whether the xray or sing-box process is actually running.
+	3.	Proxy — Sends a real HTTP request through the SOCKS5 tunnel to confirm traffic is flowing, not just that the process is up.
 
------
+A restart only happens when a failure is confirmed at the right tier.
+Transient hiccups and brief upstream drops won’t trigger unnecessary restarts.
 
-## License
+LED Status
+
+
+
+|Color  |Meaning                                 |
+|-------|----------------------------------------|
+|🟢 Green|WAN up, core running, tunnel verified   |
+|🔵 Blue |Core up, but proxy tunnel is failing    |
+|🔴 Red  |Core down, or Passwall manually disabled|
+|🟣 Pink |WAN down — no upstream connectivity     |
+
+Hardware Toggle
+
+Press the WPS button to toggle Passwall on or off without touching LuCI or SSH.
+The button is mapped during installation via OpenWrt’s hotplug system.
+To use a different button, edit /etc/hotplug.d/button/99-passwall-watchdog.
+
+Configuration
+
+All parameters live in /etc/passwall_watchdog/watchdog.conf:
+
+
+
+|Variable            |Description                                             |
+|--------------------|--------------------------------------------------------|
+|`PING_TARGET`       |Host used for WAN check                                 |
+|`WAN_TOLERANCE`     |Failed pings before declaring WAN down                  |
+|`TEST_URL`          |URL used for proxy tunnel verification                  |
+|`SOCKS_PORT`        |Local SOCKS5 port exposed by Passwall                   |
+|`PROXY_TOLERANCE`   |Failed proxy checks before marking tunnel broken        |
+|`BOOT_DELAY`        |Seconds to wait after boot before starting (default: 20)|
+|`LED_RED/GREEN/BLUE`|Hardware paths for status LEDs                          |
+|`LOG_FILE`          |Path to the watchdog log                                |
+
+Compatibility
+
+Developed and tested on the RAX3000M.
+Should work on any OpenWrt device — the only hardware-specific part is the LED paths,
+which the installer detects automatically.
+
+License
 
 MIT
+
+
+---
