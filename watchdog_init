@@ -4,7 +4,7 @@ START=99
 STOP=10
 USE_PROCD=1
 
-SCRIPT="/usr/bin/passwall_watchdog.sh"
+SCRIPT="/usr/bin/Passwall_watchdog.sh"
 PID_FILE="/tmp/passwall_watchdog.pid"
 
 start_service() {
@@ -20,7 +20,7 @@ stop_service() {
     rm -f "$PID_FILE"
     # Give the loop one cycle to notice before we force kill
     sleep 2
-    killall -q passwall_watchdog.sh 2>/dev/null
+    killall -q Passwall_watchdog.sh 2>/dev/null
     killall -9 xray sing-box ss-local ssr-local 2>/dev/null
 }
 
