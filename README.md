@@ -35,7 +35,7 @@ Real-time system state is reported via the router’s status LED:
 |Color  |Meaning                                       |
 |-------|----------------------------------------------|
 |🟢 GREEN|All clear — WAN up, tunnel verified           |
-|🟡 PINK |WAN down — upstream connectivity lost         |
+|🟣 PINK |WAN down — upstream connectivity lost         |
 |🔴 RED  |Core down — Passwall process unresponsive     |
 |🔵 BLUE |Core up, tunnel broken — proxy traffic failing|
 
