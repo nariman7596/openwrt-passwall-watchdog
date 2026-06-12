@@ -1,5 +1,4 @@
 #!/bin/sh
-
 # --- Paths ---
 INSTALL_DIR="/usr/bin"
 CONFIG_DIR="/etc/passwall_watchdog"
@@ -15,6 +14,25 @@ info()    { echo "  $1"; }
 success() { echo "  [OK] $1"; }
 warn()    { echo "  [!!] $1"; }
 ask()     { printf "  >>> %s: " "$1"; read -r REPLY; echo "$REPLY"; }
+
+# --- Step 0: Dependency check ---
+check_deps() {
+    local missing=""
+    for cmd in curl uci pgrep killall; do
+        command -v "$cmd" > /dev/null 2>&1 || missing="$missing $cmd"
+    done
+    if [ -n "$missing" ]; then
+        warn "Missing required commands:$missing"
+        info "Install them with, e.g.: opkg update && opkg install curl"
+        REPLY=$(ask "Continue anyway? (y/n)")
+        case "$REPLY" in
+            y|Y) ;;
+            *) echo "Aborted."; exit 1 ;;
+        esac
+    else
+        success "All dependencies found (curl, uci, pgrep, killall)"
+    fi
+}
 
 # --- Step 1: Backup ---
 backup_config() {
@@ -33,7 +51,6 @@ detect_leds() {
     LED_RED=$(find /sys/class/leds/ -maxdepth 1 -name "*red*" | head -n 1)
     LED_GREEN=$(find /sys/class/leds/ -maxdepth 1 -name "*green*" | head -n 1)
     LED_BLUE=$(find /sys/class/leds/ -maxdepth 1 -name "*blue*" | head -n 1)
-
     if [ -z "$LED_RED" ] || [ -z "$LED_GREEN" ] || [ -z "$LED_BLUE" ]; then
         warn "Could not auto-detect all LEDs."
         info "Available LEDs:"
@@ -46,6 +63,8 @@ detect_leds() {
         info "  RED:   $LED_RED"
         info "  GREEN: $LED_GREEN"
         info "  BLUE:  $LED_BLUE"
+        info "If any of these look wrong (e.g. matched an unrelated LED),"
+        info "you can edit $CONFIG_FILE manually after installation."
     fi
 }
 
@@ -53,7 +72,6 @@ detect_leds() {
 map_button() {
     info "Available buttons on this device:"
     ls /sys/class/input/ 2>/dev/null
-
     info ""
     info "Default toggle button is WPS."
     info "Press Enter to use WPS, or type another button name:"
@@ -131,12 +149,10 @@ install_init() {
 # --- Main ---
 echo ""
 echo "========================================"
-success "Installation complete and watchdog started."
-info "Toggle button: $BUTTON_NAME"
-info "Logs: /var/log/passwall_watchdog.log"
+echo "   Passwall Watchdog Installer"
 echo "========================================"
 echo ""
-
+check_deps
 backup_config
 detect_leds
 map_button
@@ -144,10 +160,10 @@ write_hotplug
 write_config
 install_script
 install_init
-
 echo ""
 echo "========================================"
-success "Installation complete."
-info "Start now with: $INSTALL_DIR/$SCRIPT_NAME boot"
+success "Installation complete and watchdog started."
+info "Toggle button: $BUTTON_NAME"
+info "Logs: /var/log/passwall_watchdog.log"
 echo "========================================"
 echo ""
