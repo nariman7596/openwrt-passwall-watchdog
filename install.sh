@@ -131,7 +131,9 @@ install_init() {
 # --- Main ---
 echo ""
 echo "========================================"
-echo "   Passwall Watchdog Installer"
+success "Installation complete and watchdog started."
+info "Toggle button: $BUTTON_NAME"
+info "Logs: /var/log/passwall_watchdog.log"
 echo "========================================"
 echo ""
 
