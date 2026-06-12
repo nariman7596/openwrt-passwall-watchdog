@@ -109,6 +109,20 @@ The log file auto-rotates once it exceeds ~500KB, keeping one backup (`.old`).
 
 ---
 
+## Uninstall
+
+Run the uninstaller from the router's SSH terminal:
+
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/uninstall.sh)"
+```
+
+This stops and removes the service, hotplug trigger, and main script.
+You'll be asked separately whether to also remove the config directory
+(settings + backups) and log files. Passwall2 itself is left untouched.
+
+---
+
 ## Compatibility
 
 Developed and tested on the RAX3000M.
