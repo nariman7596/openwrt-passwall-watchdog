@@ -124,7 +124,8 @@ install_init() {
     cp ./watchdog_init "$INIT_FILE"
     chmod +x "$INIT_FILE"
     "$INIT_FILE" enable
-    success "Init service installed and enabled"
+    "$INIT_FILE" start
+    success "Init service installed, enabled, and started"
 }
 
 # --- Main ---
