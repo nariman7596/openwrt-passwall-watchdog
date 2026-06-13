@@ -66,7 +66,10 @@ detect_leds() {
 map_button() {
     info ""
     info "Default toggle button is WPS (BTN_9)."
-    BUTTON_NAME=$(ask "Press Enter to use WPS, or type another button name (e.g. BTN_0)")
+    info "If you want a different button, find its name by running:"
+    info "  logread -f"
+    info "and pressing the button — it will show in the hotplug log."
+    BUTTON_NAME=$(ask "Press Enter to use WPS, or type the button name (e.g. BTN_0)")
     [ -z "$BUTTON_NAME" ] && BUTTON_NAME="BTN_9"
     success "Toggle button set to: $BUTTON_NAME"
 }
