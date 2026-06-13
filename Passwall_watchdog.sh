@@ -9,6 +9,13 @@ LOCK_FILE="/tmp/passwall_watchdog.lock"
 acquire_lock() {
     local i=0
     while [ -f "$LOCK_FILE" ]; do
+        local lock_pid
+        lock_pid=$(cat "$LOCK_FILE" 2>/dev/null)
+        if [ -n "$lock_pid" ] && ! kill -0 "$lock_pid" 2>/dev/null; then
+            # Stale lock left behind by a dead process
+            rm -f "$LOCK_FILE"
+            break
+        fi
         i=$((i + 1))
         [ "$i" -ge 10 ] && return 1
         sleep 0.5
