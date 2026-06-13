@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # --- Paths ---
 INSTALL_DIR="/usr/bin"
 CONFIG_DIR="/etc/passwall_watchdog"
@@ -8,30 +9,22 @@ HOTPLUG_FILE="$HOTPLUG_DIR/99-passwall-watchdog"
 INIT_FILE="/etc/init.d/passwall_watchdog"
 BACKUP_DIR="$CONFIG_DIR/backup"
 SCRIPT_NAME="Passwall_watchdog.sh"
+REPO_RAW="https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main"
 
 # --- Helpers ---
 info()    { echo "  $1"; }
 success() { echo "  [OK] $1"; }
 warn()    { echo "  [!!] $1"; }
-ask()     { printf "  >>> %s: " "$1"; read -r REPLY; echo "$REPLY"; }
+ask()     { printf "  >>> %s: " "$1" >&2; read -r REPLY; echo "$REPLY"; }
 
 # --- Step 0: Dependency check ---
 check_deps() {
-    local missing=""
     for cmd in curl uci pgrep killall; do
-        command -v "$cmd" > /dev/null 2>&1 || missing="$missing $cmd"
+        if ! command -v "$cmd" > /dev/null 2>&1; then
+            warn "Missing dependency: $cmd"
+        fi
     done
-    if [ -n "$missing" ]; then
-        warn "Missing required commands:$missing"
-        info "Install them with, e.g.: opkg update && opkg install curl"
-        REPLY=$(ask "Continue anyway? (y/n)")
-        case "$REPLY" in
-            y|Y) ;;
-            *) echo "Aborted."; exit 1 ;;
-        esac
-    else
-        success "All dependencies found (curl, uci, pgrep, killall)"
-    fi
+    success "All dependencies found (curl, uci, pgrep, killall)"
 }
 
 # --- Step 1: Backup ---
@@ -51,10 +44,11 @@ detect_leds() {
     LED_RED=$(find /sys/class/leds/ -maxdepth 1 -name "*red*" | head -n 1)
     LED_GREEN=$(find /sys/class/leds/ -maxdepth 1 -name "*green*" | head -n 1)
     LED_BLUE=$(find /sys/class/leds/ -maxdepth 1 -name "*blue*" | head -n 1)
+
     if [ -z "$LED_RED" ] || [ -z "$LED_GREEN" ] || [ -z "$LED_BLUE" ]; then
         warn "Could not auto-detect all LEDs."
         info "Available LEDs:"
-        ls /sys/class/leds/
+        ls /sys/class/leds/ >&2
         LED_RED=$(ask "Enter full path for RED LED")
         LED_GREEN=$(ask "Enter full path for GREEN LED")
         LED_BLUE=$(ask "Enter full path for BLUE LED")
@@ -71,11 +65,11 @@ detect_leds() {
 # --- Step 3: Button mapping ---
 map_button() {
     info "Available buttons on this device:"
-    ls /sys/class/input/ 2>/dev/null
+    ls /sys/class/input/ 2>/dev/null >&2
+
     info ""
     info "Default toggle button is WPS."
-    info "Press Enter to use WPS, or type another button name:"
-    BUTTON_NAME=$(ask "Button name [WPS]")
+    BUTTON_NAME=$(ask "Press Enter to use WPS, or type another button name")
     [ -z "$BUTTON_NAME" ] && BUTTON_NAME="WPS"
     success "Toggle button set to: $BUTTON_NAME"
 }
@@ -124,26 +118,17 @@ EOF
 
 # --- Step 6: Install main script ---
 install_script() {
-    if [ ! -f "./$SCRIPT_NAME" ]; then
-        warn "$SCRIPT_NAME not found in current directory"
-        return 1
-    fi
-    cp "./$SCRIPT_NAME" "$INSTALL_DIR/$SCRIPT_NAME"
+    curl -fsSL "$REPO_RAW/$SCRIPT_NAME" -o "$INSTALL_DIR/$SCRIPT_NAME"
     chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
     success "Main script installed: $INSTALL_DIR/$SCRIPT_NAME"
 }
 
 # --- Step 7: Install init service ---
 install_init() {
-    if [ ! -f "./watchdog_init" ]; then
-        warn "watchdog_init not found, skipping service install"
-        return 1
-    fi
-    cp ./watchdog_init "$INIT_FILE"
+    curl -fsSL "$REPO_RAW/watchdog_init" -o "$INIT_FILE"
     chmod +x "$INIT_FILE"
     "$INIT_FILE" enable
-    "$INIT_FILE" start
-    success "Init service installed, enabled, and started"
+    success "Init service installed and enabled"
 }
 
 # --- Main ---
@@ -152,6 +137,7 @@ echo "========================================"
 echo "   Passwall Watchdog Installer"
 echo "========================================"
 echo ""
+
 check_deps
 backup_config
 detect_leds
@@ -160,10 +146,13 @@ write_hotplug
 write_config
 install_script
 install_init
+
 echo ""
 echo "========================================"
-success "Installation complete and watchdog started."
+success "Installation complete."
 info "Toggle button: $BUTTON_NAME"
-info "Logs: /var/log/passwall_watchdog.log"
+info "Logs: $LOG_FILE"
+info "Starting watchdog now..."
+"$INIT_FILE" start
 echo "========================================"
 echo ""
