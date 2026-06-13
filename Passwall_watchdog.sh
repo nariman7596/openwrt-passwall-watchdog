@@ -1,21 +1,45 @@
 #!/bin/sh
+
 # --- Load configuration ---
 . /etc/passwall_watchdog/watchdog.conf
 
-# --- LED control (with existence checks) ---
+LOCK_FILE="/tmp/passwall_watchdog.lock"
+
+# --- Lock/Unlock ---
+acquire_lock() {
+    local i=0
+    while [ -f "$LOCK_FILE" ]; do
+        i=$((i + 1))
+        [ "$i" -ge 10 ] && return 1
+        sleep 0.5
+    done
+    echo $$ > "$LOCK_FILE"
+    return 0
+}
+
+release_lock() {
+    rm -f "$LOCK_FILE"
+}
+
+# --- LED control ---
 set_led() {
-    [ -f "$LED_RED/brightness" ]   && echo 0 > "$LED_RED/brightness"
-    [ -f "$LED_GREEN/brightness" ] && echo 0 > "$LED_GREEN/brightness"
-    [ -f "$LED_BLUE/brightness" ]  && echo 0 > "$LED_BLUE/brightness"
+    acquire_lock || return 1
+
+    echo 0 > "$LED_RED/brightness"
+    echo 0 > "$LED_GREEN/brightness"
+    echo 0 > "$LED_BLUE/brightness"
+
     case "$1" in
-        green) [ -f "$LED_GREEN/brightness" ] && echo 1 > "$LED_GREEN/brightness" ;;
-        red)   [ -f "$LED_RED/brightness" ]   && echo 1 > "$LED_RED/brightness"   ;;
-        blue)  [ -f "$LED_BLUE/brightness" ]  && echo 1 > "$LED_BLUE/brightness"  ;;
+        green) echo 1 > "$LED_GREEN/brightness" ;;
+        red)   echo 1 > "$LED_RED/brightness"   ;;
+        blue)  echo 1 > "$LED_BLUE/brightness"  ;;
         pink)
-            [ -f "$LED_RED/brightness" ]  && echo 1 > "$LED_RED/brightness"
-            [ -f "$LED_BLUE/brightness" ] && echo 1 > "$LED_BLUE/brightness"
+            echo 1 > "$LED_RED/brightness"
+            echo 1 > "$LED_BLUE/brightness"
             ;;
     esac
+
+    release_lock
 }
 
 # --- Logging ---
@@ -66,6 +90,7 @@ check_proxy() {
 toggle() {
     local state
     state=$(uci get passwall2.@global[0].enabled 2>/dev/null)
+
     if [ "$state" = "1" ]; then
         uci set passwall2.@global[0].enabled='0'
         uci commit passwall2
@@ -73,8 +98,6 @@ toggle() {
         kill_cores
         set_led red
         log "WARN" "Passwall disabled via toggle"
-        # Stop the watchdog loop cleanly
-        rm -f "$PID_FILE"
     else
         uci set passwall2.@global[0].enabled='1'
         uci commit passwall2
@@ -88,14 +111,17 @@ toggle() {
 run_watchdog() {
     echo $$ > "$PID_FILE"
     log "WARN" "Watchdog started (PID $$)"
+
     while [ -f "$PID_FILE" ]; do
         rotate_log
+
         if ! check_wan; then
             set_led pink
             log "WARN" "WAN down"
             sleep 30
             continue
         fi
+
         state=$(uci get passwall2.@global[0].enabled 2>/dev/null)
         if [ "$state" != "1" ]; then
             set_led red
@@ -103,6 +129,7 @@ run_watchdog() {
             sleep 5
             continue
         fi
+
         if ! check_core; then
             set_led red
             log "WARN" "Core process down, restarting passwall"
@@ -110,12 +137,14 @@ run_watchdog() {
             sleep 10
             continue
         fi
+
         if check_proxy; then
             set_led green
         else
             set_led blue
             log "WARN" "Core up but proxy tunnel failing"
         fi
+
         sleep 5
     done
 }
@@ -129,6 +158,7 @@ case "$1" in
         sleep "$BOOT_DELAY"
         state=$(uci get passwall2.@global[0].enabled 2>/dev/null)
         [ "$state" = "1" ] && /etc/init.d/passwall2 restart
+        # Kill any existing watchdog instance before starting fresh
         old_pid=$(cat "$PID_FILE" 2>/dev/null)
         [ -n "$old_pid" ] && kill -9 "$old_pid" 2>/dev/null
         run_watchdog &
