@@ -16,7 +16,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/nariman7596/openwrt-passwa
 During installation you'll be asked to confirm the toggle button (default: WPS).
 The installer checks for required dependencies (`curl`, `uci`, `pgrep`, `killall`),
 auto-detects your LED paths, writes everything to `/etc/passwall_watchdog/watchdog.conf`,
-and starts the watchdog service immediately.
+The watchdog service starts automatically once installation finishes.
 
 If `curl` is missing (common on minimal images), install it first:
 
