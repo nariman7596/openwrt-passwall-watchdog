@@ -113,6 +113,7 @@ run_watchdog() {
     log "WARN" "Watchdog started (PID $$)"
 
     local proxy_fail_streak=0
+    local restart_count=0
 
     while [ -f "$PID_FILE" ]; do
         rotate_log
@@ -121,6 +122,7 @@ run_watchdog() {
             set_led pink
             log "WARN" "WAN down"
             proxy_fail_streak=0
+            restart_count=0
             sleep 30
             continue
         fi
@@ -130,6 +132,7 @@ run_watchdog() {
             set_led red
             kill_cores
             proxy_fail_streak=0
+            restart_count=0
             sleep 5
             continue
         fi
@@ -139,6 +142,7 @@ run_watchdog() {
             log "WARN" "Core process down, restarting passwall"
             /etc/init.d/passwall2 restart > /dev/null 2>&1
             proxy_fail_streak=0
+            restart_count=0
             sleep 10
             continue
         fi
@@ -146,15 +150,22 @@ run_watchdog() {
         if check_proxy; then
             set_led green
             proxy_fail_streak=0
+            restart_count=0
         else
             proxy_fail_streak=$((proxy_fail_streak + 1))
             set_led blue
             log "WARN" "Core up but proxy tunnel failing (streak: $proxy_fail_streak)"
+
             if [ "$proxy_fail_streak" -ge 3 ]; then
-                log "WARN" "Proxy failing consistently, restarting passwall"
-                /etc/init.d/passwall2 restart > /dev/null 2>&1
-                proxy_fail_streak=0
-                sleep 10
+                if [ "$restart_count" -lt "$PROXY_RESTART_LIMIT" ]; then
+                    log "WARN" "Restarting passwall (attempt $((restart_count + 1))/$PROXY_RESTART_LIMIT)"
+                    /etc/init.d/passwall2 restart > /dev/null 2>&1
+                    restart_count=$((restart_count + 1))
+                    proxy_fail_streak=0
+                    sleep 10
+                else
+                    log "WARN" "All restart attempts exhausted, standing by"
+                fi
             fi
         fi
 
