@@ -171,7 +171,12 @@ run_watchdog() {
                     proxy_fail_streak=0
                     sleep 10
                 else
-                    log "WARN" "All restart attempts exhausted, standing by"
+                    if [ "$restart_count" -eq "$PROXY_RESTART_LIMIT" ]; then
+                        log "WARN" "All restart attempts exhausted, standing by"
+                        restart_count=$((restart_count + 1))
+                    fi
+                    proxy_fail_streak=0
+                    sleep 55
                 fi
             fi
         fi
