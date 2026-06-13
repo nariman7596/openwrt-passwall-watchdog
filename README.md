@@ -17,6 +17,19 @@ During installation you'll be asked to confirm the toggle button (default: WPS).
 The installer auto-detects your LED paths and writes everything to `/etc/passwall_watchdog/watchdog.conf`.
 The watchdog service starts automatically once installation finishes.
 
+The installer also backs up your current `passwall2` config before making any changes.
+
+---
+
+## Uninstall
+
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/nariman7596/openwrt-passwall-watchdog/main/uninstall.sh)"
+```
+
+This stops the service, removes the watchdog script, hotplug trigger, and init service.
+Passwall2 itself is left untouched. You'll be asked whether to keep your config and backups.
+
 ---
 
 ## How It Works
@@ -75,11 +88,3 @@ All parameters live in `/etc/passwall_watchdog/watchdog.conf`:
 ## Compatibility
 
 Developed and tested on the **RAX3000M**.
-Should work on any OpenWrt device — the only hardware-specific part is the LED paths,
-which the installer detects automatically.
-
----
-
-## License
-
-MIT
