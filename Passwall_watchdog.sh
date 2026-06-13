@@ -112,12 +112,15 @@ run_watchdog() {
     echo $$ > "$PID_FILE"
     log "WARN" "Watchdog started (PID $$)"
 
+    local proxy_fail_streak=0
+
     while [ -f "$PID_FILE" ]; do
         rotate_log
 
         if ! check_wan; then
             set_led pink
             log "WARN" "WAN down"
+            proxy_fail_streak=0
             sleep 30
             continue
         fi
@@ -126,6 +129,7 @@ run_watchdog() {
         if [ "$state" != "1" ]; then
             set_led red
             kill_cores
+            proxy_fail_streak=0
             sleep 5
             continue
         fi
@@ -134,15 +138,24 @@ run_watchdog() {
             set_led red
             log "WARN" "Core process down, restarting passwall"
             /etc/init.d/passwall2 restart > /dev/null 2>&1
+            proxy_fail_streak=0
             sleep 10
             continue
         fi
 
         if check_proxy; then
             set_led green
+            proxy_fail_streak=0
         else
+            proxy_fail_streak=$((proxy_fail_streak + 1))
             set_led blue
-            log "WARN" "Core up but proxy tunnel failing"
+            log "WARN" "Core up but proxy tunnel failing (streak: $proxy_fail_streak)"
+            if [ "$proxy_fail_streak" -ge 3 ]; then
+                log "WARN" "Proxy failing consistently, restarting passwall"
+                /etc/init.d/passwall2 restart > /dev/null 2>&1
+                proxy_fail_streak=0
+                sleep 10
+            fi
         fi
 
         sleep 5
