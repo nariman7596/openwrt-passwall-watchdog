@@ -100,6 +100,7 @@ BOOT_DELAY=20
 TEST_URL="https://www.youtube.com"
 SOCKS_PORT=1070
 PROXY_TOLERANCE=3
+PROXY_RESTART_LIMIT=3
 
 # Hardware - LED paths (auto-detected)
 LED_RED="$LED_RED"
