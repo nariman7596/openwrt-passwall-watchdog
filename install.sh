@@ -64,13 +64,10 @@ detect_leds() {
 
 # --- Step 3: Button mapping ---
 map_button() {
-    info "Available buttons on this device:"
-    ls /sys/class/input/ 2>/dev/null >&2
-
     info ""
-    info "Default toggle button is WPS."
-    BUTTON_NAME=$(ask "Press Enter to use WPS, or type another button name")
-    [ -z "$BUTTON_NAME" ] && BUTTON_NAME="WPS"
+    info "Default toggle button is WPS (BTN_9)."
+    BUTTON_NAME=$(ask "Press Enter to use WPS, or type another button name (e.g. BTN_0)")
+    [ -z "$BUTTON_NAME" ] && BUTTON_NAME="BTN_9"
     success "Toggle button set to: $BUTTON_NAME"
 }
 
